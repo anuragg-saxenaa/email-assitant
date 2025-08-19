@@ -1,56 +1,79 @@
 # Outlook Voice Agent
 
-An HTA application that monitors your Outlook inbox for emails sent to a specific Distribution List, checks for configured keywords, and automatically responds with a voice note attachment.
+An advanced HTA application that monitors your Outlook inbox for emails sent to a specific Distribution List, checks for configured keywords, and automatically responds with a voice note attachment. Features a modern UI with comprehensive configuration options and robust duplicate prevention.
 
 ## What It Does
 
-- Polls your Outlook inbox in the background at configurable intervals
-- Filters messages addressed to a specific Distribution List (DL)
-- Scans subject and body for configured keywords
-- When a match is found, automatically replies with:
-  - A voice note attachment (either TTS-generated or a static audio file)
-  - A short HTML message in the email body
-- Marks processed emails with a category tag to avoid duplicate replies
-- Skips typical auto-replies (Out of Office, undeliverable) and noreply senders
+- **Smart Email Monitoring**: Polls your Outlook inbox with user-configurable intervals (10 seconds to 5 minutes)
+- **Flexible Time Windows**: Configurable lookback window (15 minutes to 24 hours) for catching emails
+- **Multi-Account Support**: Automatically detects Gmail accounts and supports manual inbox selection
+- **Advanced Filtering**: Filters messages addressed to specific Distribution Lists with keyword matching
+- **Intelligent Processing**: Scans subject and body for configured keywords with detailed logging
+- **Automated Responses**: When matches are found, automatically replies with:
+  - Voice note attachments (TTS-generated or static audio files)
+  - Professional HTML message bodies
+  - Configurable reply modes (Reply, Reply All, or New Email to DL)
+- **Bulletproof Deduplication**: Dual-layer system prevents duplicate replies using both categories and ID tracking
+- **Smart Filtering**: Automatically skips auto-replies, out-of-office messages, and noreply senders
+- **Comprehensive Logging**: Detailed processing summaries with actionable suggestions for troubleshooting
 
 ## Limitations
 
 - Requires Outlook desktop application (Win32) to be open and running
 - HTA runs with high privileges; only run code you trust
 - TTS produces WAV files; if MP3 is required, use a static MP3 file instead
-- Cannot process shared/team mailboxes unless the Inbox is accessible in your current Outlook profile
+- Cannot process shared/team mailboxes unless accessible in your current Outlook profile
 - Requires Windows 10/11 with Microsoft Outlook installed
+- Uses JScript engine for maximum compatibility (no modern JavaScript features)
 
 ## Quick Start
 
-1. **Edit Configuration**:
-   - Open `OutlookVoiceAgent.hta` in a text editor
-   - Locate the configuration section at the top of the file
-   - Set your DL address, keywords, and other parameters
-
-2. **Run the Application**:
+1. **Launch the Application**:
    - Double-click `OutlookVoiceAgent.hta` to launch
-   - Click "Scan Now" to test immediately
-   - Click "Minimize" to keep it running in the background
+   - Or use the included `start_agent.bat` file
+   - The application will automatically detect your email accounts
 
-3. **Test**:
-   - Send a test email to your configured DL with one of your keywords
-   - The agent should detect it and send a voice reply
+2. **Configure Settings** (No code editing required!):
+   - **DL Email/Name**: Enter your Distribution List address or name
+   - **Keywords**: Add comma-separated keywords to trigger responses
+   - **Lookback Window**: Choose how far back to check emails (15 min to 24 hours)
+   - **Poll Frequency**: Set how often to check for new emails (10 sec to 5 min)
+   - **Reply Mode**: Choose Reply, Reply All, or New Email to DL
+   - **Voice Settings**: Configure TTS text or static audio file path
+
+3. **Start Monitoring**:
+   - Click "Start Monitoring" to begin
+   - Use "Scan Now" for immediate testing
+   - Monitor the log for detailed processing information
+
+4. **Test & Troubleshoot**:
+   - Send a test email to your configured DL with keywords
+   - Check the comprehensive log summary for any issues
+   - Use "Copy Log" to export debug information if needed
 
 ## Configuration Options
 
-Edit these settings at the top of the HTA file:
+All settings are now configurable through the modern UI interface:
 
-- `DL_ADDRESS`: The Distribution List SMTP address or display name to match
-- `KEYWORDS`: Array of case-insensitive keywords to trigger replies
-- `POLL_MS`: Polling interval in milliseconds (default: 30000 = 30 seconds)
-- `LOOKBACK_MINUTES`: How far back to check for emails when starting (default: 10)
-- `USE_TTS`: Set to true to generate speech, false to use a static audio file
-- `VOICE_TEXT`: The text to convert to speech when USE_TTS is true
-- `STATIC_AUDIO_PATH`: Path to your MP3/WAV file when USE_TTS is false
-- `REPLY_MODE`: "Reply" (to sender), "ReplyAll" (to all), or "NewToDL" (new email to DL)
-- `PROCESS_CATEGORY`: Category label to mark processed emails
-- `SKIP_SUBJECT_PATTERNS` and `SKIP_SENDER_PATTERNS`: Patterns to avoid replying to
+### **User-Configurable Settings**
+- **DL Email/Name**: Distribution List SMTP address or display name to match
+- **Keywords**: Comma-separated, case-insensitive keywords to trigger replies
+- **Subject Filter**: Optional additional subject keyword filter
+- **Lookback Window**: How far back to check emails when starting
+  - Options: 15 min, 30 min, 1 hour (default), 2 hours, 4 hours, 8 hours, 24 hours
+- **Poll Frequency**: How often to check for new emails
+  - Options: 10 sec, 15 sec, 30 sec (default), 1 min, 2 min, 5 min
+- **Reply Mode**: How to respond to matched emails
+  - "Reply" (to sender only), "Reply All" (to all recipients), "New Email to DL"
+- **Voice Mode**: Choose between TTS generation or static audio file
+- **TTS Text**: Custom text for speech synthesis
+- **Audio File Path**: Path to static MP3/WAV file
+
+### **Advanced Features**
+- **Multi-Account Support**: Automatic Gmail detection with manual selection
+- **Dual-Layer Deduplication**: Category-based + ID tracking prevents duplicates
+- **Smart Skip Patterns**: Automatically avoids auto-replies and noreply senders
+- **Comprehensive Logging**: Detailed processing summaries with troubleshooting suggestions
 
 ## Auto-Start with Windows (Task Scheduler)
 
@@ -71,29 +94,55 @@ Alternatively, you can use the included `start_agent.bat` file and add it to you
 
 ## Troubleshooting
 
-### COM Errors or Outlook Connection Issues
+The application now provides comprehensive diagnostic information to help resolve issues quickly.
 
-- Ensure Outlook desktop application is running before starting the agent
-- Check your Outlook Trust Center settings (File > Options > Trust Center > Trust Center Settings > Programmatic Access) and ensure it's not set to deny programmatic access
+### **Email Processing Issues**
+
+**📧 No Emails Being Processed**:
+- Check the **Email Processing Summary** at the end of each scan
+- Look for specific reasons why emails were skipped
+- Follow the **💡 Suggestions to Fix** provided in the log
+
+**🎯 DL Matching Issues**:
+- Verify your DL setting matches the email recipients exactly
+- Try both SMTP address (user@domain.com) and display name ("Team Name")
+- Check the detailed breakdown showing "Expected DL" vs "Actual recipients"
+
+**🔍 Keyword Matching Issues**:
+- Review the keyword list shown in processing logs
+- Check if keywords appear in subject or body as displayed
+- Consider adding more generic keywords or variations
+
+### **Technical Issues**
+
+**COM Errors or Outlook Connection**:
+- Ensure Outlook desktop application is running before starting
+- Check Outlook Trust Center settings (File > Options > Trust Center > Programmatic Access)
 - Try running the HTA as administrator
+- Use "Select Inbox" to choose the correct email account
 
-### No Matches Found
+**Multi-Account Issues**:
+- Use "Refresh Folders" to explore available accounts
+- Click "Select Inbox" to manually choose from detected accounts
+- Check logs for Gmail account detection messages
 
-- Verify your DL address is correct (SMTP address works best)
-- Increase the LOOKBACK_MINUTES value
-- Check that emails are actually in your Inbox (not in another folder)
-- Verify your keywords are present in the subject or body
+**Time Window Issues**:
+- Increase the Lookback Window if emails are older
+- Check the debug logs showing time comparisons
+- Verify emails are within the configured time range
 
-### Duplicate Replies
-
-- Confirm the category is being applied correctly
-- Ensure no other rules or scripts are also replying to the same emails
-- Check if multiple instances of the agent are running
-
-### TTS Not Working
-
+**TTS/Audio Issues**:
 - Ensure Microsoft SAPI is installed and working
-- Try using a static audio file instead (set USE_TTS to false)
+- Try using a static audio file instead of TTS
+- Check file paths are correct and accessible
+
+### **Using the Enhanced Logging**
+
+The application now provides detailed summaries after each scan:
+- **📊 Results Overview**: Shows processed vs skipped counts
+- **📋 Detailed Breakdown**: Lists each email with specific skip reasons
+- **💡 Actionable Suggestions**: Provides exact steps to fix configuration issues
+- **Copy Log**: Export complete diagnostic information for support
 
 ## Security Notes
 
@@ -112,4 +161,14 @@ To uninstall the agent:
 ## License
 
 This software is provided under the MIT License. See the LICENSE.txt file for details.
-# email-assitant
+## Recent Updates
+
+### Version 2.0 Features
+- **🎛️ Dynamic UI Configuration**: No more code editing required
+- **📧 Multi-Account Support**: Automatic Gmail detection and manual selection
+- **🔒 Enhanced Deduplication**: Bulletproof duplicate prevention system
+- **📊 Comprehensive Logging**: Detailed processing summaries with troubleshooting guidance
+- **⏰ Flexible Timing**: User-configurable lookback windows and poll frequencies
+- **🛠️ Robust Error Handling**: Graceful recovery with detailed error reporting
+- **📋 Improved Log Management**: Enhanced copy functionality compatible with HTA environment
+- **🎯 Smart Diagnostics**: Actionable suggestions for configuration issues

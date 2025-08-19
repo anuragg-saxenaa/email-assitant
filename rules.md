@@ -1,16 +1,17 @@
 ## Goal
-Create an HTA that:
-- Polls Outlook Inbox in the background.
-- Filters messages addressed to a specific *Distribution List (DL)*.
-- Scans *subject/body* for configured *keywords*.
-- If matched, *auto-replies* (Reply / ReplyAll / or New mail to the DL) with:
-  - A *predefined voice note* attached: either
-    - generated on the fly via *Windows SAPI TTS* (WAV), or
-    - a *static* MP3/WAV from disk.
-  - A short canned HTML message in the email body.
-- Dedupes with a *Category* tag (e.g., AI-VoiceReplied) and dual-layer ID tracking.
-- Skips typical auto-replies (OOO, undeliverable) and noreply senders.
-- Provides a user-friendly interface for dynamic configuration without code editing.
+Create an advanced HTA application that:
+- **Smart Email Monitoring**: Polls Outlook Inbox with user-configurable intervals (10s-5min).
+- **Flexible Time Windows**: User-configurable lookback windows (15min-24hrs) for email detection.
+- **Multi-Account Support**: Automatically detects Gmail accounts with manual selection capability.
+- **Advanced Filtering**: Filters messages addressed to specific *Distribution Lists (DL)* with intelligent matching.
+- **Comprehensive Processing**: Scans *subject/body* for configured *keywords* with detailed logging.
+- **Automated Responses**: If matched, *auto-replies* (Reply/ReplyAll/NewToDL) with:
+  - *Predefined voice notes*: TTS-generated WAV or static MP3/WAV files
+  - Professional HTML message bodies with customizable content
+- **Bulletproof Deduplication**: Dual-layer system using Category tags + Email ID tracking.
+- **Smart Filtering**: Automatically skips auto-replies, OOO messages, and noreply senders.
+- **User-Friendly Interface**: Modern UI with comprehensive configuration and real-time diagnostics.
+- **Enhanced Logging**: Detailed processing summaries with actionable troubleshooting suggestions.
 
 ## Output (files)
 - OutlookVoiceAgent.hta — self-contained UI + logic (HTML + inline JS/CSS).
@@ -51,37 +52,54 @@ Create an HTA that:
   - Minimize/Exit
 
 ## Enhanced Logic Features
-- **Multi-Account Support**:
-  - Automatic Gmail account detection
-  - Manual inbox selection from available accounts
-  - Detailed account exploration and debugging
-- **Dual-Layer Deduplication**:
-  - Primary: Outlook category-based tracking
-  - Secondary: Email ID tracking using EntryID or sender+subject+time
-  - Prevents duplicate replies even if category system fails
-- **Comprehensive Debugging**:
-  - Detailed step-by-step processing logs
-  - Email filtering decision tracking
-  - TTS/attachment creation debugging
-  - Reply sending process monitoring
-- **Robust Error Handling**:
-  - Graceful fallbacks for all operations
-  - Detailed error logging with context
-  - Continue operation even if individual steps fail
+
+### **Multi-Account Support**
+- **Automatic Detection**: Scans all Outlook stores and identifies Gmail accounts
+- **Manual Selection**: "Select Inbox" button for choosing specific email accounts
+- **Account Exploration**: "Refresh Folders" for detailed account structure analysis
+- **Smart Switching**: Automatically prefers Gmail accounts when detected
+
+### **Bulletproof Deduplication System**
+- **Layer 1**: Outlook category-based tracking ("AI-VoiceReplied")
+- **Layer 2**: Email ID tracking using EntryID or sender+subject+timestamp combo
+- **Layer 3**: Reply-sent tracking to prevent race conditions
+- **Persistent Memory**: Maintains processed email lists across sessions (up to 200 entries)
+- **Early Marking**: Marks emails as processed BEFORE sending to prevent duplicates
+
+### **Comprehensive Diagnostic System**
+- **Step-by-Step Processing**: Detailed logs for every email processing decision
+- **Email Processing Summaries**: Post-scan reports with skip reasons and suggestions
+- **Time Filtering Debug**: Detailed time comparison and filter testing
+- **Configuration Validation**: Real-time validation with specific error messages
+- **Actionable Suggestions**: Specific guidance for fixing configuration issues
+
+### **Advanced Error Handling**
+- **Graceful Degradation**: Continue operation even when individual components fail
+- **Multiple Fallbacks**: Alternative methods for clipboard, file operations, etc.
+- **Context-Rich Logging**: Detailed error messages with troubleshooting context
+- **Recovery Mechanisms**: Automatic retry and alternative approaches
+- **HTA Compatibility**: JScript-compatible code for maximum reliability
 
 ## Config (Dynamic UI Inputs)
-All parameters now configurable through UI without code editing:
-- **DL_ADDRESS** (input field) — the DL SMTP or display name to match.
-- **KEYWORDS** (textarea) — case-insensitive subject/body triggers.
-- **SUBJECT_FILTER** (input field) — optional subject keyword filter.
-- **POLL_MS** (hardcoded) — polling interval in ms (30000).
-- **LOOKBACK_MINUTES** (hardcoded) — startup lookback (60 min).
-- **USE_TTS** (dropdown) — true => synthesize WAV via SAPI; false => attach static file.
-- **VOICE_TEXT** (input field) — TTS text.
-- **STATIC_AUDIO_PATH** (input field) — absolute path to MP3/WAV when USE_TTS=false.
-- **REPLY_MODE** (dropdown) — "Reply" | "ReplyAll" | "NewToDL".
-- **PROCESS_CATEGORY** (hardcoded) — category label to mark processed mails.
-- **SKIP_SUBJECT_PATTERNS** and **SKIP_SENDER_PATTERNS** (hardcoded) — regex guards.
+All parameters now configurable through modern UI without code editing:
+
+### **User-Configurable Settings**
+- **DL_ADDRESS** (input field) — Distribution List SMTP address or display name to match
+- **KEYWORDS** (textarea) — Comma-separated, case-insensitive subject/body triggers
+- **SUBJECT_FILTER** (input field) — Optional additional subject keyword filter
+- **LOOKBACK_WINDOW** (dropdown) — Startup lookback window:
+  - Options: 15min, 30min, 1hr (default), 2hr, 4hr, 8hr, 24hr
+- **POLL_FREQUENCY** (dropdown) — Email checking interval:
+  - Options: 10sec, 15sec, 30sec (default), 1min, 2min, 5min
+- **USE_TTS** (dropdown) — Voice mode: TTS generation or static audio file
+- **VOICE_TEXT** (input field) — Custom text for TTS synthesis
+- **STATIC_AUDIO_PATH** (input field) — Absolute path to MP3/WAV when using static files
+- **REPLY_MODE** (dropdown) — Response method: "Reply" | "ReplyAll" | "NewToDL"
+
+### **System Settings (Hardcoded)**
+- **PROCESS_CATEGORY** — Category label "AI-VoiceReplied" to mark processed emails
+- **SKIP_SUBJECT_PATTERNS** — Auto-skip patterns for OOO, auto-replies, etc.
+- **SKIP_SENDER_PATTERNS** — Auto-skip patterns for noreply addresses
 
 ## Logic details
 - **On load**:
@@ -179,14 +197,32 @@ All parameters now configurable through UI without code editing:
 ## Provide start_agent.bat
 - A one-liner to launch the agent: `start mshta.exe "%~dp0OutlookVoiceAgent.hta"`
 
-## Key Improvements Made
-1. **Dynamic UI Configuration**: No more code editing required.
-2. **Multi-Account Support**: Automatic Gmail detection and manual selection.
-3. **Dual-Layer Deduplication**: Prevents duplicate replies reliably.
-4. **Comprehensive Debugging**: Detailed logging for troubleshooting.
-5. **Enhanced Error Handling**: Graceful recovery from failures.
-6. **JScript Compatibility**: Works with older JavaScript engines.
-7. **User-Friendly Interface**: Modern UI with real-time status updates.
-8. **Log Management**: Copy and clear log functionality.
-9. **Robust Email Processing**: Step-by-step filtering with detailed feedback.
-10. **Production Ready**: Clean, commented, maintainable code.
+## Key Improvements Made (Version 2.0)
+
+### **🎛️ User Experience Enhancements**
+1. **Dynamic UI Configuration**: Complete elimination of code editing requirements
+2. **Flexible Timing Controls**: User-configurable lookback windows and poll frequencies
+3. **Modern Interface**: Responsive design with real-time status updates and progress indicators
+4. **Enhanced Log Management**: HTA-compatible copy functionality with multiple fallback methods
+5. **Smart Diagnostics**: Comprehensive processing summaries with actionable troubleshooting guidance
+
+### **🔧 Technical Improvements**
+6. **Multi-Account Architecture**: Automatic Gmail detection with manual selection capabilities
+7. **Triple-Layer Deduplication**: Category + ID + Reply tracking for bulletproof duplicate prevention
+8. **Advanced Time Handling**: Sophisticated date formatting and time window management
+9. **Robust Error Recovery**: Multiple fallback mechanisms with graceful degradation
+10. **JScript Optimization**: Full compatibility with older JavaScript engines in HTA environment
+
+### **📊 Monitoring & Debugging**
+11. **Comprehensive Logging System**: Step-by-step processing with detailed decision tracking
+12. **Email Processing Summaries**: Post-scan analysis with specific skip reasons and fix suggestions
+13. **Configuration Validation**: Real-time validation with context-specific error messages
+14. **Debug Mode Enhancements**: Detailed time comparisons and filter testing capabilities
+15. **Production Readiness**: Clean, well-commented, maintainable codebase with extensive error handling
+
+### **🚀 Performance & Reliability**
+16. **Memory Management**: Efficient tracking lists with automatic cleanup (200-item limits)
+17. **Race Condition Prevention**: Early marking system prevents duplicate processing
+18. **Persistent State Management**: Maintains processing history across application restarts
+19. **Smart Resource Handling**: Automatic cleanup of temporary files and COM objects
+20. **Scalable Architecture**: Designed to handle high-volume email environments efficiently
