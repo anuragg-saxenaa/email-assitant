@@ -761,6 +761,17 @@
             }
             logInfo("DEBUG: Subject does not match skip patterns");
             
+            // Skip if this is our own automated reply (prevent reply loops)
+            logInfo("DEBUG: Checking if this is our own automated reply...");
+            if (isOurAutomatedReply(mail)) {
+                logInfo("DEBUG: Skipping our own automated reply: " + mail.Subject);
+                emailSummary.reason = "Our own automated reply";
+                emailSummary.details.push("This email is a reply we sent automatically - preventing reply loop");
+                emailSummary.details.push("Body contains: 'This is an automated voice response'");
+                return emailSummary;
+            }
+            logInfo("DEBUG: This is not our own automated reply");
+            
             // Skip if sender matches skip patterns
             logInfo("DEBUG: Checking sender skip patterns...");
             if (matchesAnyPattern(mail.SenderEmailAddress, SKIP_SENDER_PATTERNS)) {
@@ -979,6 +990,49 @@
             if (sentReplies.length > 200) {
                 sentReplies.shift(); // Remove oldest entry
             }
+        }
+    }
+    
+    // Check if this email is our own automated reply (prevent reply loops)
+    function isOurAutomatedReply(mail) {
+        try {
+            // Check if body contains our automated reply signature
+            var body = mail.Body || "";
+            if (body.indexOf("This is an automated voice response") >= 0) {
+                return true;
+            }
+            
+            // Check if body contains our HTML signature
+            var htmlBody = mail.HTMLBody || "";
+            if (htmlBody.indexOf("This is an automated voice response") >= 0) {
+                return true;
+            }
+            
+            // Check if subject starts with multiple "RE:" (indicating reply chain)
+            var subject = mail.Subject || "";
+            var reCount = 0;
+            var tempSubject = subject.toUpperCase();
+            var index = 0;
+            while ((index = tempSubject.indexOf("RE:", index)) >= 0) {
+                reCount++;
+                index += 3;
+            }
+            
+            // If more than 1 "RE:" in subject, likely a reply to our reply
+            if (reCount > 1) {
+                logInfo("DEBUG: Multiple RE: detected in subject (" + reCount + " times): " + subject);
+                return true;
+            }
+            
+            // Check if this email has our category (backup check)
+            if (hasCategory(mail, PROCESS_CATEGORY)) {
+                return true;
+            }
+            
+            return false;
+        } catch (ex) {
+            logError("DEBUG: Error checking if automated reply: " + ex.message);
+            return false;
         }
     }
     
