@@ -63,6 +63,7 @@ Create an advanced HTA application that:
 - **Layer 1**: Outlook category-based tracking ("AI-VoiceReplied")
 - **Layer 2**: Email ID tracking using EntryID or sender+subject+timestamp combo
 - **Layer 3**: Reply-sent tracking to prevent race conditions
+- **Layer 4**: **Reply Loop Prevention** - Detects and skips own automated replies
 - **Persistent Memory**: Maintains processed email lists across sessions (up to 200 entries)
 - **Early Marking**: Marks emails as processed BEFORE sending to prevent duplicates
 
@@ -113,22 +114,28 @@ All parameters now configurable through modern UI without code editing:
   - Restrict("[ReceivedTime] >= 'MM/DD/YYYY HH:MM AM/PM'") (US-format).
   - For each IPM.Note:
     - Generate unique email identifier (EntryID or combo).
-    - Skip if already processed by ID tracking or category.
-    - Skip if sender/subject matches skip regex.
-    - Check addressed to DL:
-      - quick: mail.To/mail.CC display strings,
-      - deeper: iterate Recipients → AddressEntry → GetExchangeUser().PrimarySmtpAddress.
-    - Check subject filter (if specified).
-    - Check keyword hit in Subject or Body.
-    - If hit:
-      - Add to processed list immediately (prevent duplicates).
+    - **Multi-layer duplicate prevention**:
+      - Skip if already processed by ID tracking.
+      - Skip if reply already sent to this email.
+      - Skip if already processed by category.
+    - **Smart filtering**:
+      - Skip if sender/subject matches skip patterns.
+      - **Skip if own automated reply** (prevent reply loops):
+        - Check body for "This is an automated voice response".
+        - Check for multiple "RE:" in subject line.
+        - Check for AI-VoiceReplied category.
+    - **Address and keyword validation**:
+      - Check addressed to DL (display strings + SMTP resolution).
+      - Check subject filter (if specified).
+      - Check keyword hit in Subject or Body.
+    - **If all checks pass**:
+      - Mark as processed immediately (prevent race conditions).
+      - Mark reply as sent (prevent duplicate replies).
       - Build reply according to REPLY_MODE.
-      - Prepend canned HTML body.
-      - Attach:
-        - TTS WAV via SAPI (write to temp, attach, then delete),
-        - or STATIC_AUDIO_PATH.
+      - Attach voice note (TTS WAV or static audio).
       - Send with comprehensive error handling.
-      - Add PROCESS_CATEGORY to original mail and save; optionally mark read.
+      - Add PROCESS_CATEGORY and save.
+  - **Enhanced logging**: Generate processing summary with skip reasons and suggestions.
   - Advance lastCheck to newest processed time (+1s).
 
 - **UI**:
@@ -223,6 +230,13 @@ All parameters now configurable through modern UI without code editing:
 ### **🚀 Performance & Reliability**
 16. **Memory Management**: Efficient tracking lists with automatic cleanup (200-item limits)
 17. **Race Condition Prevention**: Early marking system prevents duplicate processing
-18. **Persistent State Management**: Maintains processing history across application restarts
-19. **Smart Resource Handling**: Automatic cleanup of temporary files and COM objects
-20. **Scalable Architecture**: Designed to handle high-volume email environments efficiently
+18. **Reply Loop Prevention**: Multi-method detection of own automated replies
+19. **Persistent State Management**: Maintains processing history across application restarts
+20. **Smart Resource Handling**: Automatic cleanup of temporary files and COM objects
+21. **Scalable Architecture**: Designed to handle high-volume email environments efficiently
+
+### **🔄 Reply Loop Prevention (Latest Addition)**
+22. **Body Content Detection**: Identifies replies containing "This is an automated voice response"
+23. **Subject Pattern Analysis**: Detects multiple "RE:" prefixes indicating reply chains
+24. **Category Cross-Check**: Verifies against AI-VoiceReplied category as backup
+25. **Comprehensive Logging**: Detailed reasons for skipping automated replies with troubleshooting info
