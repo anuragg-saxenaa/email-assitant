@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Outlook Voice Agent</title>
+    <HTA:APPLICATION 
+        ID="OutlookVoiceAgent"
+        APPLICATIONNAME="Outlook Voice Agent"
+        BORDER="thin"
+        BORDERSTYLE="normal"
+        CAPTION="yes"
+        ICON=""
+        MAXIMIZEBUTTON="no"
+        MINIMIZEBUTTON="yes"
+        SHOWINTASKBAR="yes"
+        SINGLEINSTANCE="yes"
+        SYSMENU="yes"
+        WINDOWSTATE="normal"
+        SCROLL="no"
+        SCROLLFLAT="no"
+        VERSION="1.0"
+        INNERBORDER="no"
+        CONTEXTMENU="no"
+        SELECTION="no"
+    />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .header {
+            background-color: #0078d4;
+            color: white;
+            padding: 10px;
+            border-radius: 5px 5px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 16px;
+        }
+        .status-panel {
+            background-color: #e6e6e6;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 0 0 5px 5px;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .status-label {
+            font-weight: bold;
+        }
+        .log-container {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: Consolas, monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 2px;
+        }
+        .log-time {
+            color: #666;
+            margin-right: 5px;
+        }
+        .log-info {
+            color: #0078d4;
+        }
+        .log-success {
+            color: #107c10;
+        }
+        .log-error {
+            color: #d83b01;
+        }
+        .log-warning {
+            color: #ff8c00;
+        }
+        .button-panel {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        button {
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #106ebe;
+        }
+        button:active {
+            background-color: #005a9e;
+        }
+        button.secondary {
+            background-color: #e6e6e6;
+            color: #333;
+        }
+        button.secondary:hover {
+            background-color: #d6d6d6;
+        }
+        button.danger {
+            background-color: #d83b01;
+        }
+        button.danger:hover {
+            background-color: #c43601;
+        }
+        .config-panel {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .config-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .config-label {
+            font-weight: bold;
+            width: 120px;
+            margin-right: 10px;
+        }
+        .config-input {
+            flex: 1;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .config-input:focus {
+            border-color: #0078d4;
+            outline: none;
+        }
+        .keywords-input {
+            height: 60px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Outlook Voice Agent</h1>
+            <span id="status-indicator">Idle</span>
+        </div>
+        
+        <div class="config-panel">
+            <h3 style="margin-top: 0; color: #0078d4;">Configuration</h3>
+            <div class="config-row">
+                <label class="config-label">DL Email/Name:</label>
+                <input type="text" id="dl-input" class="config-input" placeholder="team@example.com or Team Distribution List" />
+            </div>
+            <div class="config-row">
+                <label class="config-label">Keywords:</label>
+                <textarea id="keywords-input" class="config-input keywords-input" placeholder="Enter keywords separated by commas (e.g., urgent, help, assistance, question)"></textarea>
+            </div>
+            <div class="config-row">
+                <label class="config-label">Subject Filter:</label>
+                <input type="text" id="subject-filter-input" class="config-input" placeholder="Optional: filter by subject keywords (leave empty for all)" />
+            </div>
+            <div class="config-row">
+                <label class="config-label">Reply Mode:</label>
+                <select id="reply-mode-select" class="config-input">
+                    <option value="Reply">Reply (to sender only)</option>
+                    <option value="ReplyAll">Reply All (to all recipients)</option>
+                    <option value="NewToDL">New Email to DL</option>
+                </select>
+            </div>
+            <div class="config-row">
+                <label class="config-label">Voice Mode:</label>
+                <select id="voice-mode-select" class="config-input">
+                    <option value="TTS">Text-to-Speech (TTS)</option>
+                    <option value="Static">Static Audio File</option>
+                </select>
+            </div>
+            <div class="config-row" id="tts-text-row">
+                <label class="config-label">TTS Text:</label>
+                <input type="text" id="tts-text-input" class="config-input" placeholder="Text to convert to speech" />
+            </div>
+            <div class="config-row" id="audio-file-row" style="display: none;">
+                <label class="config-label">Audio File:</label>
+                <input type="text" id="audio-file-input" class="config-input" placeholder="C:\Path\To\YourAudio.mp3" />
+            </div>
+            <div class="config-row">
+                <label class="config-label">Lookback Window:</label>
+                <select id="lookback-select" class="config-input">
+                    <option value="15">15 minutes</option>
+                    <option value="30">30 minutes</option>
+                    <option value="60" selected>1 hour (default)</option>
+                    <option value="120">2 hours</option>
+                    <option value="240">4 hours</option>
+                    <option value="480">8 hours</option>
+                    <option value="1440">24 hours</option>
+                </select>
+            </div>
+            <div class="config-row">
+                <label class="config-label">Poll Frequency:</label>
+                <select id="poll-frequency-select" class="config-input">
+                    <option value="10">10 seconds</option>
+                    <option value="15">15 seconds</option>
+                    <option value="30" selected>30 seconds (default)</option>
+                    <option value="60">1 minute</option>
+                    <option value="120">2 minutes</option>
+                    <option value="300">5 minutes</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="status-panel">
+            <div class="status-item">
+                <span class="status-label">Monitoring:</span>
+                <span id="dl-display">Not configured</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Poll Interval:</span>
+                <span id="poll-display">30 seconds</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Last Check:</span>
+                <span id="last-check-display">Never</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Processed:</span>
+                <span id="processed-count">0</span>
+            </div>
+        </div>
+        <div class="log-container" id="log-container"></div>
+        <div class="button-panel">
+            <button id="start-stop-btn" onclick="toggleMonitoring()">Start Monitoring</button>
+            <button id="scan-now-btn" onclick="scanNow()" disabled>Scan Now</button>
+            <button id="refresh-btn" onclick="refreshFolders()">Refresh Folders</button>
+            <button id="copy-log-btn" class="secondary" onclick="copyLog()">Copy Log</button>
+            <button id="clear-log-btn" class="secondary" onclick="clearLog()">Clear Log</button>
+            <button id="minimize-btn" class="secondary" onclick="minimizeWindow()">Minimize</button>
+            <button id="exit-btn" class="danger" onclick="exitApp()">Exit</button>
+            <button id="select-inbox-btn" class="secondary" onclick="selectInbox()">Select Inbox</button>
+        </div>
+    </div>
+
+    <script language="JScript">
+    /******************************************************************************
+     * OUTLOOK VOICE AGENT
+     * 
+     * This HTA application monitors Outlook for emails sent to a specific 
+     * Distribution List (DL) containing configured keywords, and automatically
+     * replies with a voice note attachment (either TTS or static audio file).
+     * 
+     * Created: 2025-08-19
+     * Version: 1.0
+     ******************************************************************************/
+
+    //=============================================================================
+    // CONFIGURATION - Edit these settings to customize the agent
+    //=============================================================================
+    
+    // Target Distribution List (DL) - SMTP address or display name to match
+    var DL_ADDRESS = "team@example.com";
+    
+    // Keywords to trigger a voice reply (case-insensitive, matched in subject or body)
+    var KEYWORDS = ["urgent", "help", "assistance", "question", "priority"];
+    
+    // Polling interval in milliseconds (default: 30 seconds)
+    var POLL_MS = 30000;
+    
+    // Lookback window in minutes when starting (how far back to check emails)
+    var LOOKBACK_MINUTES = 60;
+    
+    // Voice reply settings
+    var USE_TTS = true; // true = generate speech, false = use static audio file
+    var VOICE_TEXT = "Hello, this is an automated voice response. Your message has been received and will be addressed shortly.";
+    var STATIC_AUDIO_PATH = "C:\\Path\\To\\YourAudio.mp3"; // Used when USE_TTS is false
+    
+    // Reply mode: "Reply" (to sender), "ReplyAll" (to all), or "NewToDL" (new email to DL)
+    var REPLY_MODE = "Reply";
+    
+    // Category to mark processed emails
+    var PROCESS_CATEGORY = "AI-VoiceReplied";
+    
+    // Skip patterns (Regular expressions)
+    var SKIP_SUBJECT_PATTERNS = [
+        "Out of Office",
+        "Automatic Reply",
+        "Undeliverable",
+        "Delivery Status Notification"
+    ];
+    
+    var SKIP_SENDER_PATTERNS = [
+        "noreply@",
+        "no-reply@",
+        "donotreply@",
+        "do-not-reply@",
+        "mailer-daemon@"
+    ];
+
+    //=============================================================================
+    // GLOBAL VARIABLES - Do not modify
+    //=============================================================================
+    
+    var outlookApp = null;
+    var namespace = null;
+    var inbox = null;
+    var lastCheck = null;
+    var isScanning = false;
+    var isMonitoring = false;
+    var processedCount = 0;
+    var pollTimer = null;
+    var fso = null;
+    var debugMode = true; // Enable detailed logging
+    
+    // Dynamic configuration variables
+    var currentDL = "";
+    var currentKeywords = [];
+    var currentSubjectFilter = "";
+    var currentReplyMode = "Reply";
+    var currentUseeTTS = true;
+    var currentVoiceText = "";
+    var currentAudioPath = "";
+    var currentLookbackMinutes = 60;
+    var currentPollSeconds = 30;
+    
+    // Processed emails tracking (alternative to categories)
+    var processedEmails = [];
+    
+    // Additional tracking for sent replies to prevent duplicates
+    var sentReplies = [];
+    
+    //=============================================================================
+    // INITIALIZATION
+    //=============================================================================
+    
+    // Initialize the application when the window loads
+    window.onload = function() {
+        try {
+            // Initialize COM objects
+            initializeOutlook();
+            
+            // Initialize FSO for file operations
+            fso = new ActiveXObject("Scripting.FileSystemObject");
+            
+            // Set initial lastCheck time (now minus lookback window)
+            var now = new Date();
+            lastCheck = new Date(now.getTime() - (currentLookbackMinutes * 60 * 1000));
+            
+            logInfo("DEBUG: Initialization - Current time: " + formatDateTime(now));
+            logInfo("DEBUG: Initialization - Lookback window: " + currentLookbackMinutes + " minutes");
+            logInfo("DEBUG: Initialization - LastCheck set to: " + formatDateTime(lastCheck));
+            
+            // Initialize UI with default values
+            initializeUI();
+            
+            // Log initialization
+            logInfo("Agent initialized successfully");
+            logInfo("Configure the settings above and click 'Start Monitoring' to begin");
+        } catch (ex) {
+            logError("Initialization failed: " + ex.message);
+        }
+    };
+    
+    // Clean up when the window is closed
+    window.onunload = function() {
+        stopPolling();
+        releaseOutlook();
+    };
+    
+    // Initialize UI with default values
+    function initializeUI() {
+        // Set default values
+        document.getElementById("dl-input").value = "team@example.com";
+        document.getElementById("keywords-input").value = "urgent, help, assistance, question, priority";
+        document.getElementById("subject-filter-input").value = "";
+        document.getElementById("reply-mode-select").value = "Reply";
+        document.getElementById("voice-mode-select").value = "TTS";
+        document.getElementById("tts-text-input").value = "Hello, this is an automated voice response. Your message has been received and will be addressed shortly.";
+        document.getElementById("audio-file-input").value = "C:\\Path\\To\\YourAudio.mp3";
+        document.getElementById("lookback-select").value = "60";
+        document.getElementById("poll-frequency-select").value = "30";
+        
+        // Add event listeners
+        document.getElementById("voice-mode-select").onchange = toggleVoiceMode;
+        
+        // Update display
+        updateConfigDisplay();
+    }
+    
+    // Toggle between TTS and static audio file options
+    function toggleVoiceMode() {
+        var voiceMode = document.getElementById("voice-mode-select").value;
+        var ttsRow = document.getElementById("tts-text-row");
+        var audioRow = document.getElementById("audio-file-row");
+        
+        if (voiceMode === "TTS") {
+            ttsRow.style.display = "flex";
+            audioRow.style.display = "none";
+        } else {
+            ttsRow.style.display = "none";
+            audioRow.style.display = "flex";
+        }
+    }
+    
+    // Update configuration from UI inputs
+    function updateConfigFromUI() {
+        currentDL = trimString(document.getElementById("dl-input").value);
+        
+        var keywordsText = trimString(document.getElementById("keywords-input").value);
+        var keywordsArray = keywordsText.split(",");
+        currentKeywords = [];
+        
+        for (var i = 0; i < keywordsArray.length; i++) {
+            currentKeywords.push(trimString(keywordsArray[i]));
+        }
+        
+        currentSubjectFilter = trimString(document.getElementById("subject-filter-input").value);
+        currentReplyMode = document.getElementById("reply-mode-select").value;
+        currentUseeTTS = document.getElementById("voice-mode-select").value === "TTS";
+        currentVoiceText = trimString(document.getElementById("tts-text-input").value);
+        currentAudioPath = trimString(document.getElementById("audio-file-input").value);
+        currentLookbackMinutes = parseInt(document.getElementById("lookback-select").value);
+        currentPollSeconds = parseInt(document.getElementById("poll-frequency-select").value);
+        
+        updateConfigDisplay();
+    }
+    
+    // Update the status display
+    function updateConfigDisplay() {
+        var dlDisplay = document.getElementById("dl-display");
+        if (currentDL) {
+            dlDisplay.innerText = currentDL;
+        } else {
+            dlDisplay.innerText = "Not configured";
+        }
+        
+        // Update poll interval display
+        var pollDisplay = document.getElementById("poll-display");
+        if (currentPollSeconds < 60) {
+            pollDisplay.innerText = currentPollSeconds + " seconds";
+        } else {
+            var minutes = Math.floor(currentPollSeconds / 60);
+            pollDisplay.innerText = minutes + " minute" + (minutes > 1 ? "s" : "");
+        }
+    }
+    
+    // Validate configuration
+    function validateConfig() {
+        if (!currentDL) {
+            logError("Please enter a Distribution List email or name");
+            return false;
+        }
+        
+        if (currentKeywords.length === 0) {
+            logError("Please enter at least one keyword");
+            return false;
+        }
+        
+        if (currentUseeTTS && !currentVoiceText) {
+            logError("Please enter text for TTS conversion");
+            return false;
+        }
+        
+        if (!currentUseeTTS && !currentAudioPath) {
+            logError("Please enter path to audio file");
+            return false;
+        }
+        
+        return true;
+    }
+    
+    //=============================================================================
+    // OUTLOOK INTERACTION
+    //=============================================================================
+    
+    // Initialize Outlook COM objects
+    function initializeOutlook() {
+        try {
+            outlookApp = new ActiveXObject("Outlook.Application");
+            namespace = outlookApp.GetNamespace("MAPI");
+            inbox = namespace.GetDefaultFolder(6); // 6 = olFolderInbox
+            
+            logInfo("Connected to Outlook successfully");
+            
+            if (debugMode) {
+                // Debug Outlook connection details
+                try {
+                    logInfo("DEBUG: Outlook version: " + outlookApp.Version);
+                    logInfo("DEBUG: Namespace type: " + namespace.Type);
+                    logInfo("DEBUG: Inbox folder name: " + inbox.Name);
+                    logInfo("DEBUG: Inbox folder path: " + inbox.FolderPath);
+                    logInfo("DEBUG: Total items in inbox: " + inbox.Items.Count);
+                    
+                    // Check if we have multiple accounts
+                    var stores = namespace.Stores;
+                    logInfo("DEBUG: Number of Outlook stores/accounts: " + stores.Count);
+                    
+                    var gmailStore = null;
+                    var targetEmailStore = null;
+                    
+                    for (var s = 1; s <= stores.Count; s++) {
+                        var store = stores.Item(s);
+                        var displayName = store.DisplayName;
+                        var storeType = store.ExchangeStoreType;
+                        
+                        logInfo("DEBUG: Store " + s + ": " + displayName + " (Type: " + storeType + ")");
+                        
+                        // Check if this store contains Gmail or the target email
+                        var isGmail = displayName.toLowerCase().indexOf("gmail") >= 0 || 
+                                     displayName.toLowerCase().indexOf("anuragg.saxenaa@gmail.com") >= 0;
+                        
+                        var isTargetEmail = displayName.toLowerCase().indexOf("anuragg.saxenaa") >= 0;
+                        
+                        if (isGmail || isTargetEmail) {
+                            logInfo("DEBUG: *** FOUND GMAIL/TARGET ACCOUNT: " + displayName + " ***");
+                            targetEmailStore = store;
+                        }
+                        
+                        try {
+                            var storeInbox = store.GetDefaultFolder(6);
+                            var itemCount = storeInbox.Items.Count;
+                            logInfo("DEBUG: Store " + s + " Inbox: " + storeInbox.Name + " - " + itemCount + " items");
+                            
+                            // If this store has emails and looks like Gmail, prefer it
+                            if (itemCount > 0 && (isGmail || isTargetEmail)) {
+                                logInfo("DEBUG: *** GMAIL STORE WITH EMAILS FOUND! ***");
+                                gmailStore = store;
+                                targetEmailStore = store;
+                            }
+                            
+                            // Explore other folders in this store
+                            exploreStoreFolders(store, s);
+                        } catch (ex) {
+                            logInfo("DEBUG: Could not access inbox for store " + s + ": " + ex.message);
+                        }
+                    }
+                    
+                    // If we found a Gmail store, switch to it
+                    if (targetEmailStore) {
+                        try {
+                            var newInbox = targetEmailStore.GetDefaultFolder(6);
+                            inbox = newInbox;
+                            logInfo("DEBUG: *** SWITCHED TO GMAIL ACCOUNT: " + targetEmailStore.DisplayName + " ***");
+                            logInfo("DEBUG: New inbox has " + inbox.Items.Count + " items");
+                        } catch (ex) {
+                            logError("DEBUG: Could not switch to Gmail inbox: " + ex.message);
+                        }
+                    } else {
+                        logWarning("DEBUG: Gmail account not found in Outlook stores!");
+                        logInfo("DEBUG: Available stores:");
+                        for (var s = 1; s <= stores.Count; s++) {
+                            var store = stores.Item(s);
+                            logInfo("DEBUG: - " + store.DisplayName);
+                        }
+                    }
+                    
+                } catch (ex) {
+                    logError("DEBUG: Error getting Outlook details: " + ex.message);
+                }
+            }
+            
+            return true;
+        } catch (ex) {
+            logError("Failed to connect to Outlook: " + ex.message);
+            return false;
+        }
+    }
+    
+    // Release Outlook COM objects
+    function releaseOutlook() {
+        try {
+            if (namespace) namespace = null;
+            if (outlookApp) outlookApp = null;
+            logInfo("Outlook connection released");
+        } catch (ex) {
+            logError("Error releasing Outlook: " + ex.message);
+        }
+    }
+    
+    // Scan for new emails
+    function scanEmails() {
+        if (isScanning) {
+            logWarning("Scan already in progress, skipping");
+            return;
+        }
+        
+        isScanning = true;
+        document.getElementById("status-indicator").innerText = "Scanning...";
+        
+        try {
+            // Format lastCheck date for Outlook restriction
+            var lastCheckStr = formatDateForRestriction(lastCheck);
+            
+            // Get emails received since lastCheck
+            var filter = "[ReceivedTime] >= '" + lastCheckStr + "'";
+            
+            if (debugMode) {
+                logInfo("DEBUG: Using filter: " + filter);
+                logInfo("DEBUG: LastCheck time: " + formatDateTime(lastCheck));
+                logInfo("DEBUG: LastCheck formatted for Outlook: " + lastCheckStr);
+                
+                // Test with a broader filter to see if we can find the email
+                var testFilter = "[ReceivedTime] >= '8/19/2025 12:00 AM'";
+                logInfo("DEBUG: Testing with broader filter: " + testFilter);
+                
+                try {
+                    var testItems = inbox.Items.Restrict(testFilter);
+                    logInfo("DEBUG: Broader filter found " + testItems.Count + " emails");
+                    
+                    if (testItems.Count > 0) {
+                        for (var t = 1; t <= Math.min(3, testItems.Count); t++) {
+                            var testMail = testItems.Item(t);
+                            var testReceived = new Date(testMail.ReceivedTime);
+                            logInfo("DEBUG: Test email " + t + ": '" + testMail.Subject + "' received " + formatDateTime(testReceived));
+                            logInfo("DEBUG: Is " + formatDateTime(testReceived) + " >= " + formatDateTime(lastCheck) + "? " + (testReceived >= lastCheck));
+                        }
+                    }
+                } catch (ex) {
+                    logError("DEBUG: Error with test filter: " + ex.message);
+                }
+            }
+            
+            var items = inbox.Items.Restrict(filter);
+            items.Sort("[ReceivedTime]", true); // Sort by received time ascending
+            
+            logInfo("Scanning " + items.Count + " new emails since " + formatDateTime(lastCheck));
+            
+            if (debugMode && items.Count === 0) {
+                // Try getting recent emails without time filter for debugging
+                var allRecentItems = inbox.Items;
+                allRecentItems.Sort("[ReceivedTime]", false); // Sort descending (newest first)
+                
+                logInfo("DEBUG: Total emails in inbox: " + allRecentItems.Count);
+                
+                if (allRecentItems.Count > 0) {
+                    var mostRecent = allRecentItems.Item(1);
+                    logInfo("DEBUG: Most recent email received: " + formatDateTime(new Date(mostRecent.ReceivedTime)));
+                    logInfo("DEBUG: Most recent email subject: " + mostRecent.Subject);
+                    logInfo("DEBUG: Most recent email from: " + mostRecent.SenderEmailAddress);
+                    
+                    // Check first 5 emails for debugging
+                    var debugCount = Math.min(5, allRecentItems.Count);
+                    for (var d = 1; d <= debugCount; d++) {
+                        var debugMail = allRecentItems.Item(d);
+                        logInfo("DEBUG Email " + d + ": " + debugMail.Subject + " | From: " + debugMail.SenderEmailAddress + " | To: " + debugMail.To + " | Received: " + formatDateTime(new Date(debugMail.ReceivedTime)));
+                    }
+                }
+            }
+            
+            // Process each email
+            var newLastCheck = lastCheck;
+            var emailsSummary = [];
+            
+            for (var i = 1; i <= items.Count; i++) {
+                var mail = items.Item(i);
+                
+                if (debugMode) {
+                    logInfo("DEBUG: Processing email: " + mail.Subject);
+                    logInfo("DEBUG: From: " + mail.SenderEmailAddress);
+                    logInfo("DEBUG: To: " + mail.To);
+                    logInfo("DEBUG: CC: " + mail.CC);
+                    logInfo("DEBUG: Received: " + formatDateTime(new Date(mail.ReceivedTime)));
+                }
+                
+                // Update newLastCheck to track the most recent email processed
+                if (new Date(mail.ReceivedTime) > newLastCheck) {
+                    newLastCheck = new Date(mail.ReceivedTime);
+                }
+                
+                // Process the email and collect summary
+                var emailResult = processEmailWithSummary(mail);
+                emailsSummary.push(emailResult);
+            }
+            
+            // Log summary of why emails were not processed
+            logEmailProcessingSummary(emailsSummary);
+            
+            // Update lastCheck to the most recent email time + 1 second
+            if (newLastCheck > lastCheck) {
+                lastCheck = new Date(newLastCheck.getTime() + 1000);
+            }
+            
+            document.getElementById("last-check-display").innerText = formatDateTime(lastCheck);
+            logInfo("Scan completed");
+        } catch (ex) {
+            logError("Scan failed: " + ex.message);
+        } finally {
+            isScanning = false;
+            document.getElementById("status-indicator").innerText = "Idle";
+        }
+    }
+    
+    // Process a single email with summary tracking
+    function processEmailWithSummary(mail) {
+        var emailSummary = {
+            subject: mail.Subject || "No Subject",
+            from: mail.SenderEmailAddress || "Unknown",
+            to: mail.To || "",
+            cc: mail.CC || "",
+            processed: false,
+            reason: "",
+            details: []
+        };
+        
+        try {
+            logInfo("DEBUG: === PROCESSING EMAIL: " + mail.Subject + " ===");
+            
+            // Alternative deduplication check using email properties
+            var emailId = getEmailIdentifier(mail);
+            logInfo("DEBUG: Email identifier: " + emailId);
+            
+            if (isEmailAlreadyProcessed(emailId)) {
+                logInfo("DEBUG: Skipping already processed email (by ID tracking): " + mail.Subject);
+                emailSummary.reason = "Already processed (ID tracking)";
+                return emailSummary;
+            }
+            
+            // Additional check: Have we already sent a reply to this email?
+            if (hasReplySent(emailId)) {
+                logInfo("DEBUG: Skipping email - reply already sent: " + mail.Subject);
+                emailSummary.reason = "Reply already sent";
+                return emailSummary;
+            }
+            
+            // Skip if already processed (has the category)
+            logInfo("DEBUG: Checking if already processed (by category)...");
+            if (hasCategory(mail, PROCESS_CATEGORY)) {
+                logInfo("DEBUG: Skipping already processed email (by category): " + mail.Subject);
+                // Also add to our tracking list
+                addToProcessedList(emailId);
+                emailSummary.reason = "Already processed (category)";
+                return emailSummary;
+            }
+            logInfo("DEBUG: Email not already processed");
+            
+            // Skip if subject matches skip patterns
+            logInfo("DEBUG: Checking subject skip patterns...");
+            if (matchesAnyPattern(mail.Subject, SKIP_SUBJECT_PATTERNS)) {
+                logInfo("DEBUG: Skipping email with filtered subject: " + mail.Subject);
+                emailSummary.reason = "Subject matches skip pattern";
+                emailSummary.details.push("Subject contains filtered words like 'Out of Office', 'Automatic Reply', etc.");
+                return emailSummary;
+            }
+            logInfo("DEBUG: Subject does not match skip patterns");
+            
+            // Skip if sender matches skip patterns
+            logInfo("DEBUG: Checking sender skip patterns...");
+            if (matchesAnyPattern(mail.SenderEmailAddress, SKIP_SENDER_PATTERNS)) {
+                logInfo("DEBUG: Skipping email from filtered sender: " + mail.SenderEmailAddress);
+                emailSummary.reason = "Sender matches skip pattern";
+                emailSummary.details.push("Sender contains filtered patterns like 'noreply@', 'no-reply@', etc.");
+                return emailSummary;
+            }
+            logInfo("DEBUG: Sender does not match skip patterns");
+            
+            // Check if addressed to the DL
+            logInfo("DEBUG: Checking if addressed to DL: '" + currentDL + "'");
+            logInfo("DEBUG: Email To field: '" + (mail.To || "empty") + "'");
+            logInfo("DEBUG: Email CC field: '" + (mail.CC || "empty") + "'");
+            if (!isAddressedToDL(mail)) {
+                logError("DEBUG: ❌ Email NOT addressed to target DL '" + currentDL + "'");
+                logInfo("DEBUG: Available recipients in To/CC: " + (mail.To || "") + " | " + (mail.CC || ""));
+                emailSummary.reason = "Not addressed to target DL";
+                emailSummary.details.push("Email is addressed to: " + (mail.To || "none"));
+                emailSummary.details.push("CC'd to: " + (mail.CC || "none"));
+                emailSummary.details.push("Expected DL: '" + currentDL + "'");
+                return emailSummary;
+            }
+            logSuccess("DEBUG: ✅ Email IS addressed to target DL");
+            
+            // Check for keywords in subject or body
+            logInfo("DEBUG: Checking for keywords: [" + currentKeywords.join(", ") + "]");
+            logInfo("DEBUG: Email subject: '" + (mail.Subject || "empty") + "'");
+            logInfo("DEBUG: Email body preview: '" + (mail.Body ? mail.Body.substring(0, 100) + "..." : "empty") + "'");
+            if (!containsKeyword(mail)) {
+                logError("DEBUG: ❌ NO keywords found in email subject or body");
+                emailSummary.reason = "No keywords found";
+                emailSummary.details.push("Subject: '" + (mail.Subject || "empty") + "'");
+                emailSummary.details.push("Expected keywords: [" + currentKeywords.join(", ") + "]");
+                emailSummary.details.push("Body preview: '" + (mail.Body ? mail.Body.substring(0, 50) + "..." : "empty") + "'");
+                return emailSummary;
+            }
+            logSuccess("DEBUG: ✅ Keywords found in email");
+            
+            // If we got here, we need to reply with voice note
+            logSuccess("MATCH FOUND! Processing: " + mail.Subject);
+            logInfo("DEBUG: All checks passed, proceeding with voice reply...");
+            
+            // Add to processed list BEFORE sending reply to prevent duplicates
+            addToProcessedList(emailId);
+            
+            // Mark reply as being sent BEFORE actually sending to prevent race conditions
+            markReplySent(emailId);
+            
+            // Create and send reply
+            sendVoiceReply(mail);
+            
+            // Mark as processed with category
+            logInfo("DEBUG: Marking email as processed with category...");
+            try {
+                mail.Categories = addCategory(mail.Categories, PROCESS_CATEGORY);
+                mail.Save();
+                logInfo("DEBUG: Email marked as processed with category");
+            } catch (ex) {
+                logWarning("DEBUG: Could not add category, but email is tracked by ID: " + ex.message);
+            }
+            
+            // Update processed count
+            processedCount++;
+            document.getElementById("processed-count").innerText = processedCount;
+            
+            logSuccess("Email processed successfully");
+            emailSummary.processed = true;
+            emailSummary.reason = "Successfully processed and replied";
+            
+        } catch (ex) {
+            logError("Error processing email: " + ex.message);
+            emailSummary.reason = "Error during processing: " + ex.message;
+        }
+        
+        return emailSummary;
+    }
+
+    // Process a single email (legacy function for compatibility)
+    function processEmail(mail) {
+        try {
+            logInfo("DEBUG: === PROCESSING EMAIL: " + mail.Subject + " ===");
+            
+            // Alternative deduplication check using email properties
+            var emailId = getEmailIdentifier(mail);
+            logInfo("DEBUG: Email identifier: " + emailId);
+            
+            if (isEmailAlreadyProcessed(emailId)) {
+                logInfo("DEBUG: Skipping already processed email (by ID tracking): " + mail.Subject);
+                return;
+            }
+            
+            // Additional check: Have we already sent a reply to this email?
+            if (hasReplySent(emailId)) {
+                logInfo("DEBUG: Skipping email - reply already sent: " + mail.Subject);
+                return;
+            }
+            
+            // Skip if already processed (has the category)
+            logInfo("DEBUG: Checking if already processed (by category)...");
+            if (hasCategory(mail, PROCESS_CATEGORY)) {
+                logInfo("DEBUG: Skipping already processed email (by category): " + mail.Subject);
+                // Also add to our tracking list
+                addToProcessedList(emailId);
+                return;
+            }
+            logInfo("DEBUG: Email not already processed");
+            
+            // Skip if subject matches skip patterns
+            logInfo("DEBUG: Checking subject skip patterns...");
+            if (matchesAnyPattern(mail.Subject, SKIP_SUBJECT_PATTERNS)) {
+                logInfo("DEBUG: Skipping email with filtered subject: " + mail.Subject);
+                return;
+            }
+            logInfo("DEBUG: Subject does not match skip patterns");
+            
+            // Skip if sender matches skip patterns
+            logInfo("DEBUG: Checking sender skip patterns...");
+            if (matchesAnyPattern(mail.SenderEmailAddress, SKIP_SENDER_PATTERNS)) {
+                logInfo("DEBUG: Skipping email from filtered sender: " + mail.SenderEmailAddress);
+                return;
+            }
+            logInfo("DEBUG: Sender does not match skip patterns");
+            
+            // Check if addressed to the DL
+            logInfo("DEBUG: Checking if addressed to DL: '" + currentDL + "'");
+            logInfo("DEBUG: Email To field: '" + (mail.To || "empty") + "'");
+            logInfo("DEBUG: Email CC field: '" + (mail.CC || "empty") + "'");
+            if (!isAddressedToDL(mail)) {
+                logError("DEBUG: ❌ Email NOT addressed to target DL '" + currentDL + "'");
+                logInfo("DEBUG: Available recipients in To/CC: " + (mail.To || "") + " | " + (mail.CC || ""));
+                return; // Not addressed to our DL
+            }
+            logSuccess("DEBUG: ✅ Email IS addressed to target DL");
+            
+            // Check for keywords in subject or body
+            logInfo("DEBUG: Checking for keywords: [" + currentKeywords.join(", ") + "]");
+            logInfo("DEBUG: Email subject: '" + (mail.Subject || "empty") + "'");
+            logInfo("DEBUG: Email body preview: '" + (mail.Body ? mail.Body.substring(0, 100) + "..." : "empty") + "'");
+            if (!containsKeyword(mail)) {
+                logError("DEBUG: ❌ NO keywords found in email subject or body");
+                return; // No keywords found
+            }
+            logSuccess("DEBUG: ✅ Keywords found in email");
+            
+            // If we got here, we need to reply with voice note
+            logSuccess("MATCH FOUND! Processing: " + mail.Subject);
+            logInfo("DEBUG: All checks passed, proceeding with voice reply...");
+            
+            // Add to processed list BEFORE sending reply to prevent duplicates
+            addToProcessedList(emailId);
+            
+            // Mark reply as being sent BEFORE actually sending to prevent race conditions
+            markReplySent(emailId);
+            
+            // Create and send reply
+            sendVoiceReply(mail);
+            
+            // Mark as processed with category
+            logInfo("DEBUG: Marking email as processed with category...");
+            try {
+                mail.Categories = addCategory(mail.Categories, PROCESS_CATEGORY);
+                mail.Save();
+                logInfo("DEBUG: Email marked as processed with category");
+            } catch (ex) {
+                logWarning("DEBUG: Could not add category, but email is tracked by ID: " + ex.message);
+            }
+            
+            // Update processed count
+            processedCount++;
+            document.getElementById("processed-count").innerText = processedCount;
+            
+            logSuccess("Email processed successfully");
+        } catch (ex) {
+            logError("Error processing email: " + ex.message);
+        }
+    }
+    
+    // Generate a unique identifier for an email
+    function getEmailIdentifier(mail) {
+        try {
+            // Try to use EntryID if available (most reliable)
+            if (mail.EntryID) {
+                return "ID:" + mail.EntryID;
+            }
+            
+            // Fallback to combination of sender, subject, and received time
+            var sender = mail.SenderEmailAddress || "unknown";
+            var subject = mail.Subject || "no-subject";
+            var receivedTime = mail.ReceivedTime ? new Date(mail.ReceivedTime).getTime() : "no-time";
+            
+            return "COMBO:" + sender + "|" + subject + "|" + receivedTime;
+        } catch (ex) {
+            logError("DEBUG: Error generating email identifier: " + ex.message);
+            return "ERROR:" + new Date().getTime();
+        }
+    }
+    
+    // Check if we've already sent a reply to this email
+    function hasReplySent(emailId) {
+        for (var i = 0; i < sentReplies.length; i++) {
+            if (sentReplies[i] === emailId) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // Mark that we've sent a reply to this email
+    function markReplySent(emailId) {
+        if (!hasReplySent(emailId)) {
+            sentReplies.push(emailId);
+            logInfo("DEBUG: Marked reply as sent for: " + emailId);
+            
+            // Keep list size manageable (keep last 200 sent replies)
+            if (sentReplies.length > 200) {
+                sentReplies.shift(); // Remove oldest entry
+            }
+        }
+    }
+    
+    // Check if email is already processed using our tracking list
+    function isEmailAlreadyProcessed(emailId) {
+        for (var i = 0; i < processedEmails.length; i++) {
+            if (processedEmails[i] === emailId) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // Add email to processed list
+    function addToProcessedList(emailId) {
+        if (!isEmailAlreadyProcessed(emailId)) {
+            processedEmails.push(emailId);
+            logInfo("DEBUG: Added email to processed list: " + emailId);
+            
+            // Keep list size manageable (keep last 100 processed emails)
+            if (processedEmails.length > 100) {
+                processedEmails.shift(); // Remove oldest entry
+            }
+        }
+    }
+    
+    // Check if email is addressed to the target DL
+    function isAddressedToDL(mail) {
+        try {
+            // Quick check in To and CC fields
+            if (mail.To && mail.To.indexOf(currentDL) >= 0) {
+                logInfo("DL found in To field: " + mail.Subject);
+                return true;
+            }
+            
+            if (mail.CC && mail.CC.indexOf(currentDL) >= 0) {
+                logInfo("DL found in CC field: " + mail.Subject);
+                return true;
+            }
+            
+            // Deeper check in Recipients collection
+            var recipients = mail.Recipients;
+            for (var i = 1; i <= recipients.Count; i++) {
+                var recipient = recipients.Item(i);
+                
+                try {
+                    // Try to get Exchange user
+                    var exchangeUser = recipient.AddressEntry.GetExchangeUser();
+                    if (exchangeUser) {
+                        var smtpAddress = exchangeUser.PrimarySmtpAddress;
+                        if (smtpAddress && smtpAddress.toLowerCase() === currentDL.toLowerCase()) {
+                            logInfo("DL found in Recipients (SMTP): " + mail.Subject);
+                            return true;
+                        }
+                    }
+                } catch (ex) {
+                    // Some recipients might not be Exchange users, ignore errors
+                }
+                
+                // Check display name as fallback
+                if (recipient.Name && recipient.Name.toLowerCase() === currentDL.toLowerCase()) {
+                    logInfo("DL found in Recipients (Name): " + mail.Subject);
+                    return true;
+                }
+            }
+            
+            return false;
+        } catch (ex) {
+            logError("Error checking DL: " + ex.message);
+            return false;
+        }
+    }
+    
+    // Check if email contains any of the keywords
+    function containsKeyword(mail) {
+        try {
+            var subject = mail.Subject.toLowerCase();
+            var body = mail.Body.toLowerCase();
+            
+            // Check subject filter first (if specified)
+            if (currentSubjectFilter) {
+                var subjectFilterLower = currentSubjectFilter.toLowerCase();
+                if (subject.indexOf(subjectFilterLower) < 0) {
+                    return false; // Subject filter not matched
+                }
+            }
+            
+            // Check keywords in subject or body
+            for (var i = 0; i < currentKeywords.length; i++) {
+                var keyword = currentKeywords[i].toLowerCase();
+                
+                if (subject.indexOf(keyword) >= 0) {
+                    logInfo("Keyword '" + currentKeywords[i] + "' found in subject: " + mail.Subject);
+                    return true;
+                }
+                
+                if (body.indexOf(keyword) >= 0) {
+                    logInfo("Keyword '" + currentKeywords[i] + "' found in body: " + mail.Subject);
+                    return true;
+                }
+            }
+            
+            return false;
+        } catch (ex) {
+            logError("Error checking keywords: " + ex.message);
+            return false;
+        }
+    }
+    
+    // Send reply with voice note attachment
+    function sendVoiceReply(mail) {
+        try {
+            logInfo("DEBUG: Starting voice reply process...");
+            
+            var reply;
+            
+            // Create reply based on current reply mode
+            logInfo("DEBUG: Creating reply with mode: " + currentReplyMode);
+            
+            switch (currentReplyMode) {
+                case "Reply":
+                    reply = mail.Reply();
+                    logInfo("DEBUG: Created Reply to sender");
+                    break;
+                    
+                case "ReplyAll":
+                    reply = mail.ReplyAll();
+                    logInfo("DEBUG: Created ReplyAll");
+                    break;
+                    
+                case "NewToDL":
+                    reply = outlookApp.CreateItem(0); // 0 = olMailItem
+                    reply.To = currentDL;
+                    reply.Subject = "Re: " + mail.Subject;
+                    logInfo("DEBUG: Created new email to DL: " + currentDL);
+                    break;
+                    
+                default:
+                    reply = mail.Reply();
+                    logInfo("DEBUG: Unknown reply mode, defaulting to Reply");
+            }
+            
+            if (!reply) {
+                logError("DEBUG: Failed to create reply object");
+                return;
+            }
+            
+            logInfo("DEBUG: Reply object created successfully");
+            logInfo("DEBUG: Reply To: " + reply.To);
+            logInfo("DEBUG: Reply Subject: " + reply.Subject);
+            
+            // Set HTML body
+            var htmlBody = "<p>This is an automated voice response.</p>" +
+                          "<p>Please listen to the attached audio file.</p>" +
+                          "<hr>" +
+                          (reply.HTMLBody || "");
+            
+            reply.HTMLBody = htmlBody;
+            logInfo("DEBUG: HTML body set");
+            
+            // Attach voice note
+            var attachmentPath = "";
+            logInfo("DEBUG: Creating voice attachment (TTS: " + currentUseeTTS + ")");
+            
+            if (currentUseeTTS) {
+                logInfo("DEBUG: Generating TTS audio...");
+                attachmentPath = createTTSAudio();
+                logInfo("DEBUG: TTS audio path: " + attachmentPath);
+            } else {
+                attachmentPath = currentAudioPath;
+                logInfo("DEBUG: Using static audio path: " + attachmentPath);
+            }
+            
+            if (attachmentPath) {
+                try {
+                    logInfo("DEBUG: Attaching audio file: " + attachmentPath);
+                    reply.Attachments.Add(attachmentPath);
+                    logInfo("DEBUG: Audio file attached successfully");
+                } catch (ex) {
+                    logError("DEBUG: Failed to attach audio file: " + ex.message);
+                }
+                
+                // Delete temp file if using TTS
+                if (currentUseeTTS) {
+                    try {
+                        fso.DeleteFile(attachmentPath);
+                        logInfo("DEBUG: Temp TTS file deleted");
+                    } catch (ex) {
+                        logWarning("DEBUG: Could not delete temp file: " + ex.message);
+                    }
+                }
+            } else {
+                logWarning("DEBUG: No attachment path available");
+            }
+            
+            // Send the reply
+            logInfo("DEBUG: Attempting to send reply...");
+            try {
+                reply.Send();
+                logSuccess("Voice reply sent successfully!");
+                logInfo("DEBUG: Reply sent to: " + reply.To);
+            } catch (ex) {
+                logError("DEBUG: Failed to send reply: " + ex.message);
+                
+                // Try to save as draft instead
+                try {
+                    reply.Save();
+                    logWarning("DEBUG: Reply saved as draft instead of sending");
+                } catch (saveEx) {
+                    logError("DEBUG: Could not even save as draft: " + saveEx.message);
+                }
+            }
+            
+        } catch (ex) {
+            logError("Error in sendVoiceReply: " + ex.message);
+        }
+    }
+    
+    // Create TTS audio file
+    function createTTSAudio() {
+        try {
+            logInfo("DEBUG: Starting TTS audio creation...");
+            
+            // Create temp file path
+            var tempFolder = fso.GetSpecialFolder(2); // 2 = Temporary folder
+            var tempFile = fso.BuildPath(tempFolder.Path, "voice_reply_" + new Date().getTime() + ".wav");
+            
+            logInfo("DEBUG: Temp file path: " + tempFile);
+            
+            // Create SAPI objects
+            logInfo("DEBUG: Creating SAPI objects...");
+            var voice = new ActiveXObject("SAPI.SpVoice");
+            var stream = new ActiveXObject("SAPI.SpFileStream");
+            
+            logInfo("DEBUG: SAPI objects created successfully");
+            
+            // Open file for writing
+            logInfo("DEBUG: Opening file stream...");
+            stream.Open(tempFile, 3); // 3 = SSFMCreateForWrite
+            
+            // Set voice output to file
+            logInfo("DEBUG: Setting voice output to file...");
+            voice.AudioOutputStream = stream;
+            
+            // Speak text to file
+            logInfo("DEBUG: Speaking text: " + currentVoiceText);
+            voice.Speak(currentVoiceText);
+            
+            // Close stream
+            logInfo("DEBUG: Closing file stream...");
+            stream.Close();
+            
+            logInfo("DEBUG: TTS audio created successfully: " + tempFile);
+            
+            // Verify file was created
+            if (fso.FileExists(tempFile)) {
+                var fileSize = fso.GetFile(tempFile).Size;
+                logInfo("DEBUG: TTS file size: " + fileSize + " bytes");
+                return tempFile;
+            } else {
+                logError("DEBUG: TTS file was not created");
+                return "";
+            }
+            
+        } catch (ex) {
+            logError("DEBUG: Error creating TTS audio: " + ex.message);
+            return "";
+        }
+    }
+    
+    // Log summary of email processing results
+    function logEmailProcessingSummary(emailsSummary) {
+        if (emailsSummary.length === 0) {
+            logInfo("📧 SCAN SUMMARY: No emails found in the specified time window");
+            return;
+        }
+        
+        logInfo("📧 ===== EMAIL PROCESSING SUMMARY =====");
+        
+        var processedCount = 0;
+        var skippedCount = 0;
+        var reasonCounts = {};
+        
+        // Count results by reason
+        for (var i = 0; i < emailsSummary.length; i++) {
+            var email = emailsSummary[i];
+            if (email.processed) {
+                processedCount++;
+            } else {
+                skippedCount++;
+                if (reasonCounts[email.reason]) {
+                    reasonCounts[email.reason]++;
+                } else {
+                    reasonCounts[email.reason] = 1;
+                }
+            }
+        }
+        
+        // Log overall summary
+        logInfo("📊 RESULTS: " + processedCount + " processed, " + skippedCount + " skipped");
+        
+        if (processedCount > 0) {
+            logSuccess("✅ " + processedCount + " email(s) successfully processed and replied to!");
+        }
+        
+        if (skippedCount > 0) {
+            logWarning("⚠️  " + skippedCount + " email(s) were skipped. Reasons:");
+            
+            // Log each reason with count
+            for (var reason in reasonCounts) {
+                var count = reasonCounts[reason];
+                logWarning("   • " + reason + " (" + count + " email" + (count > 1 ? "s" : "") + ")");
+            }
+            
+            // Provide detailed breakdown for non-processed emails
+            logInfo("📋 DETAILED BREAKDOWN:");
+            for (var i = 0; i < emailsSummary.length; i++) {
+                var email = emailsSummary[i];
+                if (!email.processed) {
+                    logWarning("❌ '" + email.subject + "' from " + email.from);
+                    logWarning("   Reason: " + email.reason);
+                    
+                    if (email.details && email.details.length > 0) {
+                        for (var j = 0; j < email.details.length; j++) {
+                            logInfo("   • " + email.details[j]);
+                        }
+                    }
+                }
+            }
+            
+            // Provide helpful suggestions
+            logInfo("💡 SUGGESTIONS TO FIX:");
+            if (reasonCounts["Not addressed to target DL"]) {
+                logInfo("   🎯 DL Issue: Check if your 'DL Email/Name' matches the email recipients");
+                logInfo("      Current DL setting: '" + currentDL + "'");
+            }
+            if (reasonCounts["No keywords found"]) {
+                logInfo("   🔍 Keywords Issue: Add relevant keywords or check if they match email content");
+                logInfo("      Current keywords: [" + currentKeywords.join(", ") + "]");
+            }
+            if (reasonCounts["Subject matches skip pattern"] || reasonCounts["Sender matches skip pattern"]) {
+                logInfo("   🚫 Skip Pattern: Email was filtered out by automatic skip rules (this is usually correct)");
+            }
+        }
+        
+        logInfo("📧 ===== END SUMMARY =====");
+    }
+    
+    //=============================================================================
+    // HELPER FUNCTIONS
+    //=============================================================================
+    
+    // Custom trim function for older JavaScript engines
+    function trimString(str) {
+        if (!str) return "";
+        return str.replace(/^\s+|\s+$/g, "");
+    }
+    
+    // Format date for Outlook restriction
+    function formatDateForRestriction(date) {
+        // Format as "MM/DD/YYYY HH:MM AM/PM" (US format for Outlook)
+        var months = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+        var month = months[date.getMonth()];
+        var day = date.getDate();
+        var year = date.getFullYear();
+        
+        var hours = date.getHours();
+        var minutes = date.getMinutes();
+        var ampm = hours >= 12 ? "PM" : "AM";
+        
+        hours = hours % 12;
+        hours = hours ? hours : 12; // Convert 0 to 12
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        
+        return month + "/" + day + "/" + year + " " + hours + ":" + minutes + " " + ampm;
+    }
+    
+    // Format date for display
+    function formatDateTime(date) {
+        return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+    }
+    
+    // Check if email has a specific category
+    function hasCategory(mail, category) {
+        try {
+            if (!mail.Categories) {
+                logInfo("DEBUG: Email has no categories");
+                return false;
+            }
+            
+            var categories = mail.Categories;
+            logInfo("DEBUG: Email categories: '" + categories + "'");
+            
+            if (!categories) {
+                logInfo("DEBUG: Categories is null or empty");
+                return false;
+            }
+            
+            // Split by comma and check each category
+            var categoryArray = categories.split(",");
+            for (var i = 0; i < categoryArray.length; i++) {
+                var cat = trimString(categoryArray[i]);
+                logInfo("DEBUG: Checking category: '" + cat + "' against '" + category + "'");
+                if (cat === category) {
+                    logInfo("DEBUG: Found matching category: " + category);
+                    return true;
+                }
+            }
+            
+            logInfo("DEBUG: Category '" + category + "' not found");
+            return false;
+        } catch (ex) {
+            logError("DEBUG: Error checking categories: " + ex.message);
+            return false;
+        }
+    }
+    
+    // Add a category to a category string
+    function addCategory(categories, newCategory) {
+        try {
+            logInfo("DEBUG: Adding category '" + newCategory + "' to existing: '" + categories + "'");
+            
+            if (!categories) {
+                logInfo("DEBUG: No existing categories, creating new");
+                return newCategory;
+            }
+            
+            // Check if category already exists
+            var categoryArray = categories.split(",");
+            for (var i = 0; i < categoryArray.length; i++) {
+                var cat = trimString(categoryArray[i]);
+                if (cat === newCategory) {
+                    logInfo("DEBUG: Category already exists, not adding duplicate");
+                    return categories;
+                }
+            }
+            
+            var result = categories + ", " + newCategory;
+            logInfo("DEBUG: New categories string: '" + result + "'");
+            return result;
+        } catch (ex) {
+            logError("DEBUG: Error adding category: " + ex.message);
+            return categories;
+        }
+    }
+    
+    // Check if a string matches any pattern in an array
+    function matchesAnyPattern(str, patterns) {
+        if (!str) return false;
+        str = str.toLowerCase();
+        
+        for (var i = 0; i < patterns.length; i++) {
+            var pattern = patterns[i].toLowerCase();
+            if (str.indexOf(pattern) >= 0) return true;
+        }
+        
+        return false;
+    }
+    
+    //=============================================================================
+    // POLLING AND UI FUNCTIONS
+    //=============================================================================
+    
+    // Start polling timer
+    function startPolling() {
+        if (pollTimer) {
+            window.clearInterval(pollTimer);
+        }
+        
+        var pollMs = currentPollSeconds * 1000;
+        pollTimer = window.setInterval(scanEmails, pollMs);
+        logInfo("Polling started (every " + currentPollSeconds + " seconds)");
+    }
+    
+    // Stop polling timer
+    function stopPolling() {
+        if (pollTimer) {
+            window.clearInterval(pollTimer);
+            pollTimer = null;
+            logInfo("Polling stopped");
+        }
+    }
+    
+    // Toggle monitoring on/off
+    function toggleMonitoring() {
+        if (!isMonitoring) {
+            // Start monitoring
+            updateConfigFromUI();
+            if (!validateConfig()) {
+                return;
+            }
+            
+            // Reset lastCheck based on current lookback window setting
+            var now = new Date();
+            lastCheck = new Date(now.getTime() - (currentLookbackMinutes * 60 * 1000));
+            
+            logInfo("DEBUG: Monitoring start - Current time: " + formatDateTime(now));
+            logInfo("DEBUG: Monitoring start - Lookback window: " + currentLookbackMinutes + " minutes");
+            logInfo("DEBUG: Monitoring start - LastCheck reset to: " + formatDateTime(lastCheck));
+            
+            isMonitoring = true;
+            startPolling();
+            
+            document.getElementById("start-stop-btn").innerText = "Stop Monitoring";
+            document.getElementById("start-stop-btn").style.backgroundColor = "#d83b01";
+            document.getElementById("scan-now-btn").disabled = false;
+            document.getElementById("status-indicator").innerText = "Monitoring";
+            
+            logSuccess("Monitoring started for: " + currentDL);
+            logInfo("Keywords: " + currentKeywords.join(", "));
+            if (currentSubjectFilter) {
+                logInfo("Subject filter: " + currentSubjectFilter);
+            }
+        } else {
+            // Stop monitoring
+            isMonitoring = false;
+            stopPolling();
+            
+            document.getElementById("start-stop-btn").innerText = "Start Monitoring";
+            document.getElementById("start-stop-btn").style.backgroundColor = "#0078d4";
+            document.getElementById("scan-now-btn").disabled = true;
+            document.getElementById("status-indicator").innerText = "Idle";
+            
+            logInfo("Monitoring stopped");
+        }
+    }
+    
+    // Manual scan button handler
+    function scanNow() {
+        if (!isMonitoring) {
+            logWarning("Please start monitoring first");
+            return;
+        }
+        
+        logInfo("Manual scan triggered");
+        scanEmails();
+    }
+    
+    // Minimize window button handler
+    function minimizeWindow() {
+        window.moveTo(0, 0);
+        window.resizeTo(0, 0);
+    }
+    
+    // Exit application button handler
+    function exitApp() {
+        window.close();
+    }
+    
+    // Select inbox button handler
+    function selectInbox() {
+        try {
+            var stores = namespace.Stores;
+            var storeCount = stores.Count;
+            
+            if (storeCount === 1) {
+                logInfo("Only one account available");
+                return;
+            }
+            
+            logInfo("Available email accounts:");
+            var accountInfo = [];
+            
+            for (var s = 1; s <= storeCount; s++) {
+                var store = stores.Item(s);
+                var displayName = store.DisplayName;
+                var itemCount = 0;
+                
+                try {
+                    var storeInbox = store.GetDefaultFolder(6);
+                    itemCount = storeInbox.Items.Count;
+                } catch (ex) {
+                    itemCount = "N/A";
+                }
+                
+                var accountDesc = s + ". " + displayName + " (" + itemCount + " emails)";
+                accountInfo.push(accountDesc);
+                logInfo(accountDesc);
+            }
+            
+            var selection = prompt("Select an email account to use (enter number 1-" + storeCount + "):\n\n" + accountInfo.join("\n"));
+            
+            if (selection) {
+                var selectedIndex = parseInt(selection);
+                if (selectedIndex >= 1 && selectedIndex <= storeCount) {
+                    try {
+                        var selectedStore = stores.Item(selectedIndex);
+                        var newInbox = selectedStore.GetDefaultFolder(6);
+                        inbox = newInbox;
+                        
+                        logSuccess("Switched to account: " + selectedStore.DisplayName);
+                        logInfo("This inbox has " + inbox.Items.Count + " emails");
+                        
+                        // Update the display
+                        updateConfigDisplay();
+                        
+                    } catch (ex) {
+                        logError("Could not switch to selected account: " + ex.message);
+                    }
+                } else {
+                    logError("Invalid selection. Please enter a number between 1 and " + storeCount);
+                }
+            }
+        } catch (ex) {
+            logError("Error selecting inbox: " + ex.message);
+        }
+    }
+    
+    // Refresh folders button handler
+    function refreshFolders() {
+        try {
+            var stores = namespace.Stores;
+            var storeCount = stores.Count;
+            
+            if (storeCount === 1) {
+                logInfo("Only one inbox available");
+                return;
+            }
+            
+            logInfo("Refreshing folders...");
+            
+            for (var s = 1; s <= storeCount; s++) {
+                var store = stores.Item(s);
+                logInfo("Refreshing store: " + store.DisplayName);
+                
+                try {
+                    var storeInbox = store.GetDefaultFolder(6);
+                    logInfo("Store " + s + " Inbox: " + storeInbox.Name + " - " + storeInbox.Items.Count + " items");
+                    
+                    // Explore other folders in this store
+                    exploreStoreFolders(store, s);
+                } catch (ex) {
+                    logInfo("Could not access inbox for store " + s + ": " + ex.message);
+                }
+            }
+            
+            logInfo("Folders refreshed");
+        } catch (ex) {
+            logError("Error refreshing folders: " + ex.message);
+        }
+    }
+    
+    // Copy log button handler
+    function copyLog() {
+        try {
+            var logContainer = document.getElementById("log-container");
+            var logText = "";
+            
+            // Extract text from all log entries using compatible method
+            var allElements = logContainer.getElementsByTagName("div");
+            for (var i = 0; i < allElements.length; i++) {
+                var element = allElements[i];
+                if (element.className && element.className.indexOf("log-entry") >= 0) {
+                    // Get all spans within this log entry
+                    var spans = element.getElementsByTagName("span");
+                    var timeText = "";
+                    var messageText = "";
+                    
+                    for (var j = 0; j < spans.length; j++) {
+                        var span = spans[j];
+                        if (span.className && span.className.indexOf("log-time") >= 0) {
+                            timeText = span.innerText || span.textContent || "";
+                        } else if (span.className && (
+                            span.className.indexOf("log-info") >= 0 ||
+                            span.className.indexOf("log-success") >= 0 ||
+                            span.className.indexOf("log-error") >= 0 ||
+                            span.className.indexOf("log-warning") >= 0
+                        )) {
+                            messageText = span.innerText || span.textContent || "";
+                        }
+                    }
+                    
+                    if (timeText && messageText) {
+                        logText += timeText + messageText + "\n";
+                    } else if (element.innerText || element.textContent) {
+                        // Fallback: get entire element text
+                        logText += (element.innerText || element.textContent) + "\n";
+                    }
+                }
+            }
+            
+            // If no log entries found, get all text from container
+            if (logText.length === 0) {
+                logText = logContainer.innerText || logContainer.textContent || "No log entries found";
+            }
+            
+            // Copy to clipboard using a temporary textarea
+            var tempTextArea = document.createElement("textarea");
+            tempTextArea.value = logText;
+            tempTextArea.style.position = "absolute";
+            tempTextArea.style.left = "-9999px";
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            
+            var success = false;
+            try {
+                success = document.execCommand("copy");
+            } catch (copyEx) {
+                logError("Copy command failed: " + copyEx.message);
+            }
+            
+            document.body.removeChild(tempTextArea);
+            
+            if (success) {
+                logSuccess("Log copied to clipboard! (" + logText.split("\n").length + " lines)");
+            } else {
+                logError("Failed to copy to clipboard. Log text length: " + logText.length);
+                
+                // Alternative: show log in a popup for manual copy
+                try {
+                    var popup = window.open("", "LogWindow", "width=800,height=600,scrollbars=yes,resizable=yes");
+                    popup.document.write("<html><head><title>Email Agent Log</title></head><body>");
+                    popup.document.write("<h3>Email Agent Log</h3>");
+                    popup.document.write("<pre style='font-family: Consolas, monospace; font-size: 12px; white-space: pre-wrap;'>");
+                    popup.document.write(logText.replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+                    popup.document.write("</pre>");
+                    popup.document.write("<p><button onclick='window.close()'>Close</button></p>");
+                    popup.document.write("</body></html>");
+                    popup.document.close();
+                    logInfo("Log opened in new window for manual copy");
+                } catch (popupEx) {
+                    logError("Could not open log window: " + popupEx.message);
+                }
+            }
+        } catch (ex) {
+            logError("Error copying log: " + ex.message);
+        }
+    }
+    
+    // Clear log button handler
+    function clearLog() {
+        try {
+            var logContainer = document.getElementById("log-container");
+            logContainer.innerHTML = "";
+            logInfo("Log cleared");
+        } catch (ex) {
+            logError("Error clearing log: " + ex.message);
+        }
+    }
+    
+    //=============================================================================
+    // LOGGING FUNCTIONS
+    //=============================================================================
+    
+    // Log an informational message
+    function logInfo(message) {
+        logMessage(message, "info");
+    }
+    
+    // Log a success message
+    function logSuccess(message) {
+        logMessage(message, "success");
+    }
+    
+    // Log an error message
+    function logError(message) {
+        logMessage(message, "error");
+    }
+    
+    // Log a warning message
+    function logWarning(message) {
+        logMessage(message, "warning");
+    }
+    
+    // Add a message to the log
+    function logMessage(message, type) {
+        var logContainer = document.getElementById("log-container");
+        var now = new Date();
+        var timeStr = now.toLocaleTimeString();
+        
+        var entry = document.createElement("div");
+        entry.className = "log-entry";
+        
+        var timeSpan = document.createElement("span");
+        timeSpan.className = "log-time";
+        timeSpan.innerText = "[" + timeStr + "]";
+        
+        var messageSpan = document.createElement("span");
+        messageSpan.className = "log-" + type;
+        messageSpan.innerText = " " + message;
+        
+        entry.appendChild(timeSpan);
+        entry.appendChild(messageSpan);
+        
+        logContainer.appendChild(entry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    </script>
+</body>
+</html>
